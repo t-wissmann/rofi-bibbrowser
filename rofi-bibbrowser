@@ -1,0 +1,51 @@
+#!/usr/bin/python
+import subprocess
+import bibtexparser
+import struct
+import re
+from bibtexparser.bparser import BibTexParser
+from bibtexparser.customization import convert_to_unicode
+
+# DEFAULT CONFIG SECTION
+bibfile = '/home/thorsten/uni/literatur/refs.bib'
+rofi_command = [ 'rofi' , '-dmenu', '-i' , '-sep', '\\0', '-eh', '2' ]
+
+def call_rofi(entries):
+    proc = subprocess.Popen(rofi_command, stdin=subprocess.PIPE)
+    for e in entries:
+        proc.stdin.write((e).encode('utf-8'))
+        proc.stdin.write(struct.pack('B', 0))
+    proc.stdin.close()
+    proc.wait()
+
+def fix_string(string):
+    string = re.sub('[\s+]', ' ', string)
+    string = re.sub('[\\\\{}]', '', string)
+    return string
+
+def reorder_author_name(author):
+    parts = author.split(', ')
+    parts.reverse()
+    return ' '.join(parts)
+
+def format_author(author):
+    author = fix_string(author)
+    authors = author.split(' and ')
+    authors = [ reorder_author_name(i) for i in authors ]
+    return ', '.join(authors)
+
+# TODO: load user configuration here.
+
+#call_rofi(["aasdf\nalsdf\nasldf","aslkdjfadf\nsdfjks\nsdfsldjf"])
+
+with open(bibfile) as bibtex_file:
+    parser = BibTexParser()
+    parser.customization = convert_to_unicode
+    bib_database = bibtexparser.load(bibtex_file, parser=parser)
+    menu = []
+    for e in bib_database.entries:
+        str = fix_string(e.get('title', '?')) + '\n'
+        str += format_author(e.get('author', '?')) + ' ' + e.get('year', '')
+        menu.append(str)
+    call_rofi(menu)
+    #print(bib_database.entries)
