@@ -9,6 +9,7 @@ from bibtexparser.customization import convert_to_unicode
 # DEFAULT CONFIG SECTION
 bibfile = '/home/thorsten/uni/literatur/refs.bib'
 rofi_command = [ 'rofi' , '-dmenu', '-i' , '-sep', '\\0', '-eh', '2' ]
+rofi_command += [ '-lines', '10', '-normal-window' ]
 
 def call_rofi(entries):
     proc = subprocess.Popen(rofi_command, stdin=subprocess.PIPE)
@@ -44,7 +45,7 @@ with open(bibfile) as bibtex_file:
     bib_database = bibtexparser.load(bibtex_file, parser=parser)
     menu = []
     for e in bib_database.entries:
-        str = fix_string(e.get('title', '?')) + '\n'
+        str = fix_string(e.get('title', e.get('ID', '?'))) + '\n'
         str += format_author(e.get('author', '?')) + ' ' + e.get('year', '')
         menu.append(str)
     call_rofi(menu)
