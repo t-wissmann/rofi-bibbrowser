@@ -38,8 +38,15 @@ bibtex entry.
 Selecting the corresponding PDF document will rename it to a canonical filename
 and open it afterwards.
 
-
 ## Configuration file
 The configuration file is just a python script and located at
 `~/.config/rofi-bibbrowserrc`. You can overwrite any function that has been
 defined before and adjust it to your needs.
+
+## Requirements
+
+* A current version of `rofi` in your PATH
+* Python 3
+* `python-bibtexparser`, i.e. the python module `bibtexparser`
+* `xdg-open` (for opening PDF documents)
+* `xclip` (for bibtex source yanking)
