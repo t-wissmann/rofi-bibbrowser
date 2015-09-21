@@ -17,8 +17,10 @@ class CustomParser(BibTexParser):
 
 
 # DEFAULT CONFIG SECTION
-document_dir = '/home/thorsten/uni/literatur'
-bibfile = document_dir + '/' + 'refs.bib'
+home = os.environ['HOME']
+config_dir = os.environ.get('XDG_CONFIG_DIR', home + '/.config/')
+document_dir = home + '/uni/literatur'
+bibfile = document_dir + '/refs.bib'
 rofi_command = [ 'rofi' , '-dmenu']
 rofi_command += [ '-lines', '10', '-i' ]
 yank_key = 'Control+y'
@@ -149,7 +151,10 @@ def format_keybinding_message(bindings):
         out += ('%-10s: %s' % (key,desc))
     return out
 
-# TODO: load user configuration here.
+
+configfile = config_dir + 'rofi-bibbrowserrc'
+if os.path.isfile(configfile):
+    exec (compile(open(configfile, "rb").read(), configfile, 'exec'))
 
 with open(bibfile) as bibtex_file:
     parser = CustomParser()
