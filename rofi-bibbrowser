@@ -3,6 +3,7 @@ import subprocess
 import bibtexparser
 import struct
 import re
+import sys
 from bibtexparser.bparser import BibTexParser
 from bibtexparser.customization import convert_to_unicode
 
@@ -11,6 +12,7 @@ document_dir = '/home/thorsten/uni/literatur'
 bibfile = document_dir + '/' + 'refs.bib'
 rofi_command = [ 'rofi' , '-dmenu', '-i' , '-eh', '2', '-no-custom' ]
 rofi_command += [ '-lines', '10', '-normal-window' ]
+rofi_command += [ '-p', 'Open:' ]
 
 # accepts a list of strings and returns the index of the selected menu entry
 # or None otherwise
@@ -33,7 +35,7 @@ def call_rofi(entries):
 
 def fix_string(string):
     string = re.sub('[\s+]', ' ', string)
-    string = re.sub('[\\\\{}]', '', string)
+    string = re.sub('[`\\\\{}]', '', string)
     return string
 
 def reorder_author_name(author):
@@ -59,11 +61,41 @@ def find_files(directory):
     files[:] = [f[1] for f in files]
     return files
 
+# for a bibtex entry -- as a dictionary -- return a list of possible filenames
+def generate_filenames(entry):
+    yield entry['ID']
+    authors = fix_string(entry.get('author', ''))
+    authors = authors.split(' and ')
+    lastnames = []
+    # get last names of authors
+    for i, name in enumerate(authors):
+        s = reorder_author_name(name)
+        if (s == ''):
+            continue
+        s = s.rsplit(None, 1)
+        if (len(s) > 1):
+            lastnames.append(s[-1])
+        else:
+            lastnames.append(s[0])
+    year = entry.get('year', '')
+    title = re.sub(':', '', fix_string(entry.get('title', '')))
+    if len(lastnames) > 0 and bool(year):
+        first_sep = ' '
+    else:
+        first_sep = ''
+    part1 = ','.join(lastnames) + first_sep + year
+    if bool(part1) and bool(title):
+        # if first half of the string and the title is non-empty:
+        second_sep = ': '
+    else:
+        second_sep = ''
+    yield  part1 + second_sep + title
+
 # gets a list of filenames (relative to the document_dir) and returns a list of
 # files of documents only
 def filter_documents(filenames):
     r = re.compile('.*\.pdf$', re.IGNORECASE)
-    return filter(r.match, filenames)
+    return list(filter(r.match, filenames))
 
 # TODO: load user configuration here.
 
@@ -73,10 +105,23 @@ with open(bibfile) as bibtex_file:
     bib_database = bibtexparser.load(bibtex_file, parser=parser)
     documents = filter_documents(find_files(document_dir))
     menu = []
-    menu.extend(documents)
+    is_file = []
     for e in bib_database.entries:
         s = fix_string(e.get('title', e.get('ID', '?'))) + '\n'
         s += format_author(e.get('author', '?')) + ' ' + e.get('year', '')
         menu.append(s)
-    print(call_rofi(menu))
+        is_file.append(False)
+    menu.extend(documents)
+    is_file.extend([True] * len(documents))
+    idx = call_rofi(menu)
+    if idx == None:
+        sys.exit(0)
+    if is_file[idx] == True:
+        filepath = document_dir + '/' + menu[idx]
+        print('opening: ' + filepath)
+    else:
+        # selected item was bib entry
+        for f in generate_filenames(bib_database.entries[idx]):
+            print(f)
     #print(bib_database.entries)
+
