@@ -47,16 +47,36 @@ def format_author(author):
     authors = [ reorder_author_name(i) for i in authors ]
     return ', '.join(authors)
 
+def find_files(directory):
+    cmd = [ 'find' , directory, '-type', 'f', '-printf', '%Ts %P\\0' ]
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    byte_string = proc.stdout.read().split(b'\0')
+    byte_string = filter(None, byte_string) # remove empty (byte)strings from list
+    files = list(map(lambda x: x.decode('utf-8').split(' ', 1), byte_string))
+    for f in files:
+        f[0] = int(f[0])
+    files.sort()
+    files[:] = [f[1] for f in files]
+    return files
+
+# gets a list of filenames (relative to the document_dir) and returns a list of
+# files of documents only
+def filter_documents(filenames):
+    r = re.compile('.*\.pdf$', re.IGNORECASE)
+    return filter(r.match, filenames)
+
 # TODO: load user configuration here.
 
 with open(bibfile) as bibtex_file:
     parser = BibTexParser()
     parser.customization = convert_to_unicode
     bib_database = bibtexparser.load(bibtex_file, parser=parser)
+    documents = filter_documents(find_files(document_dir))
     menu = []
+    menu.extend(documents)
     for e in bib_database.entries:
-        str = fix_string(e.get('title', e.get('ID', '?'))) + '\n'
-        str += format_author(e.get('author', '?')) + ' ' + e.get('year', '')
-        menu.append(str)
+        s = fix_string(e.get('title', e.get('ID', '?'))) + '\n'
+        s += format_author(e.get('author', '?')) + ' ' + e.get('year', '')
+        menu.append(s)
     print(call_rofi(menu))
     #print(bib_database.entries)
