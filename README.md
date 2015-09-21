@@ -1,8 +1,22 @@
-# A browser for your PDFs documents using bibtex
+# The bibtex-powered browser for your PDF document collection
 
-Tired of chosing the right filenames for your PDF documents? Or do they get too
-long because they have to contain the title and the full author list?
-`rofi-bibbrowser` solves all those problems!
+Tired of chosing the right filenames for your PDF documents? Or do you loose
+track of your PDF documents because of different file naming conventions?
+Or are you tired of giving your PDF very long names manually because they
+should contain the title and the full author list?
+
+The `rofi-bibbrowser` solves all these problems and offers a `rofi` based menu
+to quickly filter all your PDF documents based on the tags of a bibtex file!
+
+## Features
+
+* Offers a menu containg entries of a bibtex-file and PDF documents of a
+  configurable directory
+* Automatically associates PDFs with bibtex entries (and hides associated PDF
+  files in the main menu in preference of the bibtex entry)
+* Opens selected documents via `xdg-open`
+* Renames PDFs to canonical name based on the bibtex entry
+* Copying the bibtex-entry from the main menu to the clipboard
 
 ## Behaviour
 
