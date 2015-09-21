@@ -213,6 +213,7 @@ with open(bibfile) as bibtex_file:
             message += '  ' + re.sub('\n', '\n  ', menu[idx]) + '\n\n'
             message += 'The selected file will be renamed to:\n\n'
             message += '  ' + entry['_filenames'][0]
+            message += '\n'
             newfileidx,_ = call_rofi(documents, [ '-p', 'Link:', '-no-custom', '-mesg', message ])
             if newfileidx == None:
                 sys.exit(0)
