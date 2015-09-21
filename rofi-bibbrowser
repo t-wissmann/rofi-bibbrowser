@@ -7,17 +7,29 @@ from bibtexparser.bparser import BibTexParser
 from bibtexparser.customization import convert_to_unicode
 
 # DEFAULT CONFIG SECTION
-bibfile = '/home/thorsten/uni/literatur/refs.bib'
-rofi_command = [ 'rofi' , '-dmenu', '-i' , '-sep', '\\0', '-eh', '2' ]
+document_dir = '/home/thorsten/uni/literatur'
+bibfile = document_dir + '/' + 'refs.bib'
+rofi_command = [ 'rofi' , '-dmenu', '-i' , '-eh', '2', '-no-custom' ]
 rofi_command += [ '-lines', '10', '-normal-window' ]
 
+# accepts a list of strings and returns the index of the selected menu entry
+# or None otherwise
 def call_rofi(entries):
-    proc = subprocess.Popen(rofi_command, stdin=subprocess.PIPE)
+    additional_args = [ '-sep', '\\0', '-format', 'i' ]
+    proc = subprocess.Popen(rofi_command + additional_args,
+                            stdin=subprocess.PIPE,
+                            stdout=subprocess.PIPE)
     for e in entries:
         proc.stdin.write((e).encode('utf-8'))
         proc.stdin.write(struct.pack('B', 0))
     proc.stdin.close()
-    proc.wait()
+    answer = proc.stdout.read().decode("utf-8")
+    # trim whitespace
+    answer = re.sub('[ \n]', '', answer)
+    if answer == '':
+        return None
+    else:
+        return int(answer)
 
 def fix_string(string):
     string = re.sub('[\s+]', ' ', string)
@@ -37,8 +49,6 @@ def format_author(author):
 
 # TODO: load user configuration here.
 
-#call_rofi(["aasdf\nalsdf\nasldf","aslkdjfadf\nsdfjks\nsdfsldjf"])
-
 with open(bibfile) as bibtex_file:
     parser = BibTexParser()
     parser.customization = convert_to_unicode
@@ -48,5 +58,5 @@ with open(bibfile) as bibtex_file:
         str = fix_string(e.get('title', e.get('ID', '?'))) + '\n'
         str += format_author(e.get('author', '?')) + ' ' + e.get('year', '')
         menu.append(str)
-    call_rofi(menu)
+    print(call_rofi(menu))
     #print(bib_database.entries)
