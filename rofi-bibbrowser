@@ -8,11 +8,21 @@ import os
 from bibtexparser.bparser import BibTexParser
 from bibtexparser.customization import convert_to_unicode
 
+class CustomParser(BibTexParser):
+    def _parse_record(self, record, customization=None):
+        d = super()._parse_record(record, customization)
+        d['_source'] = record
+        return d
+
+
+
 # DEFAULT CONFIG SECTION
 document_dir = '/home/thorsten/uni/literatur'
 bibfile = document_dir + '/' + 'refs.bib'
 rofi_command = [ 'rofi' , '-dmenu']
-rofi_command += [ '-lines', '10', '-normal-window', '-i' ]
+rofi_command += [ '-lines', '10', '-i' ]
+yank_key = 'Control+y'
+edit_key = 'Control+y'
 
 # accepts a list of strings and returns the index of the selected menu entry
 # or None otherwise
@@ -26,12 +36,13 @@ def call_rofi(entries, additional_args=[]):
         proc.stdin.write(struct.pack('B', 0))
     proc.stdin.close()
     answer = proc.stdout.read().decode("utf-8")
+    exit_code = proc.wait()
     # trim whitespace
     answer = re.sub('[ \n]', '', answer)
     if answer == '':
-        return None
+        return None,exit_code
     else:
-        return int(answer)
+        return int(answer),exit_code
 
 def fix_string(string):
     string = re.sub('[\s+]', ' ', string)
@@ -117,10 +128,31 @@ def move_document(oldpath, newpath):
     mv = subprocess.Popen(['mv', '--verbose', '--no-clobber', oldpath, newpath])
     mv.wait
 
+def to_clipboard(string):
+    commands = [
+        ['xclip', '-i'],
+        ['xclip', '-selection', 'clipboard', '-i'],
+    ]
+    for cmd in commands:
+        p = subprocess.Popen(cmd,
+                         stdin = subprocess.PIPE)
+        p.stdin.write(string.encode('utf-8'))
+        p.stdin.close()
+
+# gets a list of tuples (key, description)
+# and returns a pango-formatted description of the keybindings
+def format_keybinding_message(bindings):
+    out = ''
+    for key,desc in bindings:
+        if bool(out):
+            out += '\n'
+        out += ('%-10s: %s' % (key,desc))
+    return out
+
 # TODO: load user configuration here.
 
 with open(bibfile) as bibtex_file:
-    parser = BibTexParser()
+    parser = CustomParser()
     parser.customization = convert_to_unicode
     bib_database = bibtexparser.load(bibtex_file, parser=parser)
     documents = filter_documents(find_files(document_dir))
@@ -140,10 +172,24 @@ with open(bibfile) as bibtex_file:
             # then add it to the menu
             menu.append(e)
             is_file.append(True)
-    idx = call_rofi(menu, [ '-eh', '2', '-p', 'Open:', '-no-custom'])
-    if idx == None:
+
+    keybindings = [ ['Enter', 'Open' ],
+                [ yank_key, 'Copy bibtex source' ],
+              ]
+    message = format_keybinding_message(keybindings)
+    rofi_args = [ '-eh', '2', '-p', 'Open:', '-no-custom']
+    rofi_args += [ '-kb-custom-1', yank_key ]
+    rofi_args += [ '-mesg', message ]
+    idx,exit_code = call_rofi(menu,  rofi_args)
+    if idx == None or exit_code == 1:
         sys.exit(0)
-    if is_file[idx] == True:
+    elif exit_code == 10:
+        if is_file[idx]:
+            to_clipboard(document_dir + '/' + menu[idx])
+        else:
+            entry = bib_database.entries[idx]
+            to_clipboard(entry['_source'])
+    elif is_file[idx] == True:
         open_document(document_dir + '/' + menu[idx])
     else:
         # selected item was bib entry
@@ -155,7 +201,7 @@ with open(bibfile) as bibtex_file:
             message += '  ' + re.sub('\n', '\n  ', menu[idx]) + '\n\n'
             message += 'The selected file will be renamed to:\n\n'
             message += '  ' + entry['_filenames'][0]
-            newfileidx = call_rofi(documents, [ '-p', 'Link:', '-no-custom', '-mesg', message ])
+            newfileidx,_ = call_rofi(documents, [ '-p', 'Link:', '-no-custom', '-mesg', message ])
             if newfileidx == None:
                 sys.exit(0)
             filepath = document_dir + '/' + documents[newfileidx]
