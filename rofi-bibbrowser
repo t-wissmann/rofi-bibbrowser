@@ -151,6 +151,13 @@ def format_keybinding_message(bindings):
         out += ('%-10s: %s' % (key,desc))
     return out
 
+# gets a bib entry (as a dictionary) and returns how it should appear in the menu
+def format_bib_entry(e):
+    s = fix_string(e.get('title', e.get('ID', '?'))) + '\n'
+    s += format_author(e.get('author', '?')) + ' ' + e.get('year', '')
+    if len(e['_filepaths']) > 0:
+        s += ' [PDF]'
+    return s
 
 configfile = config_dir + 'rofi-bibbrowserrc'
 if os.path.isfile(configfile):
@@ -165,9 +172,7 @@ with open(bibfile) as bibtex_file:
     is_file = []
     bib_filenames = [] # filenames that are reachable via bib entries
     for e in bib_database.entries:
-        s = fix_string(e.get('title', e.get('ID', '?'))) + '\n'
-        s += format_author(e.get('author', '?')) + ' ' + e.get('year', '')
-        menu.append(s)
+        menu.append('dummy')
         is_file.append(False)
         e['_filenames'] = list(generate_filenames(e))
         e['_filepaths'] = []
@@ -177,6 +182,8 @@ with open(bibfile) as bibtex_file:
             # then add it to the menu
             menu.append(e)
             is_file.append(True)
+    for idx,e in enumerate(bib_database.entries):
+        menu[idx] = format_bib_entry(e)
 
     keybindings = [ ['Enter', 'Open' ],
                 [ yank_key, 'Copy bibtex source' ],
