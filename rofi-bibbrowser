@@ -101,7 +101,8 @@ def generate_filenames(entry):
         second_sep = ': '
     else:
         second_sep = ''
-    yield  part1 + second_sep + title
+    # crop punctation marks from the end of the title
+    yield  part1 + second_sep + re.sub('[\.,!]*$', '', title)
     # as a last fallback option:
     yield entry['ID']
 
