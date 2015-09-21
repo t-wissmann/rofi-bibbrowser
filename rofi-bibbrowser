@@ -4,20 +4,20 @@ import bibtexparser
 import struct
 import re
 import sys
+import os
 from bibtexparser.bparser import BibTexParser
 from bibtexparser.customization import convert_to_unicode
 
 # DEFAULT CONFIG SECTION
 document_dir = '/home/thorsten/uni/literatur'
 bibfile = document_dir + '/' + 'refs.bib'
-rofi_command = [ 'rofi' , '-dmenu', '-i' , '-eh', '2', '-no-custom' ]
-rofi_command += [ '-lines', '10', '-normal-window' ]
-rofi_command += [ '-p', 'Open:' ]
+rofi_command = [ 'rofi' , '-dmenu']
+rofi_command += [ '-lines', '10', '-normal-window', '-i' ]
 
 # accepts a list of strings and returns the index of the selected menu entry
 # or None otherwise
-def call_rofi(entries):
-    additional_args = [ '-sep', '\\0', '-format', 'i' ]
+def call_rofi(entries, additional_args=[]):
+    additional_args.extend([ '-sep', '\\0', '-format', 'i' ])
     proc = subprocess.Popen(rofi_command + additional_args,
                             stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE)
@@ -56,14 +56,13 @@ def find_files(directory):
     byte_string = filter(None, byte_string) # remove empty (byte)strings from list
     files = list(map(lambda x: x.decode('utf-8').split(' ', 1), byte_string))
     for f in files:
-        f[0] = int(f[0])
+        f[0] = -1 * int(f[0])
     files.sort()
     files[:] = [f[1] for f in files]
     return files
 
 # for a bibtex entry -- as a dictionary -- return a list of possible filenames
 def generate_filenames(entry):
-    yield entry['ID']
     authors = fix_string(entry.get('author', ''))
     authors = authors.split(' and ')
     lastnames = []
@@ -90,12 +89,33 @@ def generate_filenames(entry):
     else:
         second_sep = ''
     yield  part1 + second_sep + title
+    # as a last fallback option:
+    yield entry['ID']
 
 # gets a list of filenames (relative to the document_dir) and returns a list of
 # files of documents only
 def filter_documents(filenames):
     r = re.compile('.*\.pdf$', re.IGNORECASE)
     return list(filter(r.match, filenames))
+
+def document_name_from_path(path):
+    _, basename = os.path.split(path)
+    return os.path.splitext(basename)[0]
+
+def link_path_to_entry(path, entries):
+    doc_name = document_name_from_path(path)
+    for e in entries:
+        if doc_name in e['_filenames']:
+            e['_filepaths'].append(path)
+            return True
+    return False
+
+def open_document(path):
+    subprocess.Popen(["xdg-open", path])
+
+def move_document(oldpath, newpath):
+    mv = subprocess.Popen(['mv', '--verbose', '--no-clobber', oldpath, newpath])
+    mv.wait
 
 # TODO: load user configuration here.
 
@@ -106,22 +126,45 @@ with open(bibfile) as bibtex_file:
     documents = filter_documents(find_files(document_dir))
     menu = []
     is_file = []
+    bib_filenames = [] # filenames that are reachable via bib entries
     for e in bib_database.entries:
         s = fix_string(e.get('title', e.get('ID', '?'))) + '\n'
         s += format_author(e.get('author', '?')) + ' ' + e.get('year', '')
         menu.append(s)
         is_file.append(False)
-    menu.extend(documents)
-    is_file.extend([True] * len(documents))
-    idx = call_rofi(menu)
+        e['_filenames'] = list(generate_filenames(e))
+        e['_filepaths'] = []
+    for e in documents:
+        if not link_path_to_entry(e, bib_database.entries):
+            # if the file e could not be linked to an entry
+            # then add it to the menu
+            menu.append(e)
+            is_file.append(True)
+    idx = call_rofi(menu, [ '-eh', '2', '-p', 'Open:', '-no-custom'])
     if idx == None:
         sys.exit(0)
     if is_file[idx] == True:
-        filepath = document_dir + '/' + menu[idx]
-        print('opening: ' + filepath)
+        open_document(document_dir + '/' + menu[idx])
     else:
         # selected item was bib entry
-        for f in generate_filenames(bib_database.entries[idx]):
-            print(f)
+        entry = bib_database.entries[idx]
+        if len(entry['_filepaths']) > 0:
+            open_document(document_dir + '/' + entry['_filepaths'][0])
+        else:
+            message = 'Pick a document corresponding to the entry:\n\n'
+            message += '  ' + re.sub('\n', '\n  ', menu[idx]) + '\n\n'
+            message += 'The selected file will be renamed to:\n\n'
+            message += '  ' + entry['_filenames'][0]
+            newfileidx = call_rofi(documents, [ '-p', 'Link:', '-no-custom', '-mesg', message ])
+            if newfileidx == None:
+                sys.exit(0)
+            filepath = document_dir + '/' + documents[newfileidx]
+            dirname, basename = os.path.split(filepath)
+            docname,extension = os.path.splitext(basename)
+            new_path = dirname + '/' + entry['_filenames'][0] + extension
+            move_document(filepath, new_path)
+            open_document(new_path)
+
+            # try to link a document
     #print(bib_database.entries)
 
