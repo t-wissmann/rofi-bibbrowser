@@ -106,9 +106,20 @@ def filenameAuthorsYearTitle(entry):
 def filenameBibID(entry):
     return entry['ID']
 
+def filenameFromURL(entry):
+    if 'link' in entry:
+        url = entry['link']
+        url = re.sub('^.*/', '', url)
+        if not re.match( r'.*\.pdf$', url, flags=re.I):
+            return None
+        url = re.sub('\.pdf$', '', url, flags=re.I)
+        return url
+    return None
+
 filename_generators = [
         filenameAuthorsYearTitle,
         filenameBibID,
+        filenameFromURL,
     ]
 
 # for a bibtex entry -- as a dictionary -- return a list of possible filenames
