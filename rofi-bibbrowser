@@ -116,7 +116,7 @@ def generate_filenames(entry):
     for generator in filename_generators:
         result = generator(entry)
         if result != None:
-            yield result
+            yield re.sub('/', '', result)
 
 # gets a list of filenames (relative to the document_dir) and returns a list of
 # files of documents only
