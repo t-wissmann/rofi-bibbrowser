@@ -74,8 +74,7 @@ def find_files(directory):
     files[:] = [f[1] for f in files]
     return files
 
-# for a bibtex entry -- as a dictionary -- return a list of possible filenames
-def generate_filenames(entry):
+def filenameAuthorsYearTitle(entry):
     authors = fix_string(entry.get('author', ''))
     authors = authors.split(' and ')
     lastnames = []
@@ -102,9 +101,22 @@ def generate_filenames(entry):
     else:
         second_sep = ''
     # crop punctation marks from the end of the title
-    yield  part1 + second_sep + re.sub('[\.,!]*$', '', title)
-    # as a last fallback option:
-    yield entry['ID']
+    return  part1 + second_sep + re.sub('[\.,!]*$', '', title)
+
+def filenameBibID(entry):
+    return entry['ID']
+
+filename_generators = [
+        filenameAuthorsYearTitle,
+        filenameBibID,
+    ]
+
+# for a bibtex entry -- as a dictionary -- return a list of possible filenames
+def generate_filenames(entry):
+    for generator in filename_generators:
+        result = generator(entry)
+        if result != None:
+            yield result
 
 # gets a list of filenames (relative to the document_dir) and returns a list of
 # files of documents only
