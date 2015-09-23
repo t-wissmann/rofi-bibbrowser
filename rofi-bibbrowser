@@ -128,12 +128,19 @@ def document_name_from_path(path):
     _, basename = os.path.split(path)
     return os.path.splitext(basename)[0]
 
-def link_path_to_entry(path, entries):
+# dictionary that maps document names to bibtex entries
+doc_name_to_entry = { };
+def link_doc_name_to_entry(doc_name, entry):
+    if doc_name in doc_name_to_entry:
+        sys.stderr.write("Warning: " + doc_name + " links to multiple entries")
+    doc_name_to_entry[doc_name] = entry
+
+def link_path_to_entry(path):
     doc_name = document_name_from_path(path)
-    for e in entries:
-        if doc_name in e['_filenames']:
-            e['_filepaths'].append(path)
-            return True
+    if doc_name in doc_name_to_entry:
+        entry = doc_name_to_entry[doc_name]
+        entry['_filepaths'].append(path)
+        return True
     return False
 
 def open_document(path):
@@ -189,8 +196,10 @@ with open(bibfile) as bibtex_file:
         is_file.append(False)
         e['_filenames'] = list(generate_filenames(e))
         e['_filepaths'] = []
+        for i in e['_filenames']:
+            link_doc_name_to_entry(i, e)
     for e in documents:
-        if not link_path_to_entry(e, bib_database.entries):
+        if not link_path_to_entry(e):
             # if the file e could not be linked to an entry
             # then add it to the menu
             menu.append(e)
