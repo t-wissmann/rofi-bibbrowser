@@ -24,6 +24,7 @@ bibfile = document_dir + '/refs.bib'
 rofi_command = [ 'rofi' , '-dmenu']
 rofi_command += [ '-lines', '10', '-i' ]
 yank_key = 'Control+y'
+edit_bib_key = 'Control+z'
 edit_key = 'Control+y'
 
 # accepts a list of strings and returns the index of the selected menu entry
@@ -154,7 +155,7 @@ def link_path_to_entry(path):
         return True
     return False
 
-def open_document(path):
+def open_file(path):
     subprocess.Popen(["xdg-open", path])
 
 def move_document(oldpath, newpath):
@@ -220,10 +221,12 @@ with open(bibfile) as bibtex_file:
 
     keybindings = [ ['Enter', 'Open' ],
                 [ yank_key, 'Copy bibtex source' ],
+                [ edit_bib_key, 'Edit bibtex file' ],
               ]
     message = format_keybinding_message(keybindings)
     rofi_args = [ '-eh', '2', '-p', 'Open:', '-no-custom']
     rofi_args += [ '-kb-custom-1', yank_key ]
+    rofi_args += [ '-kb-custom-2', edit_bib_key ]
     rofi_args += [ '-mesg', message ]
     idx,exit_code = call_rofi(menu,  rofi_args)
     if idx == None or exit_code == 1:
@@ -234,13 +237,15 @@ with open(bibfile) as bibtex_file:
         else:
             entry = bib_database.entries[idx]
             to_clipboard(entry['_source'])
+    elif exit_code == 11:
+        open_file(bibfile)
     elif is_file[idx] == True:
-        open_document(document_dir + '/' + menu[idx])
+        open_file(document_dir + '/' + menu[idx])
     else:
         # selected item was bib entry
         entry = bib_database.entries[idx]
         if len(entry['_filepaths']) > 0:
-            open_document(document_dir + '/' + entry['_filepaths'][0])
+            open_file(document_dir + '/' + entry['_filepaths'][0])
         else:
             message = 'Pick a document corresponding to the entry:\n\n'
             message += '  ' + re.sub('\n', '\n  ', menu[idx]) + '\n\n'
@@ -255,7 +260,7 @@ with open(bibfile) as bibtex_file:
             docname,extension = os.path.splitext(basename)
             new_path = dirname + '/' + entry['_filenames'][0] + extension
             move_document(filepath, new_path)
-            open_document(new_path)
+            open_file(new_path)
 
             # try to link a document
     #print(bib_database.entries)
