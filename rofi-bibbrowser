@@ -24,8 +24,7 @@ bibfile = document_dir + '/refs.bib'
 rofi_command = [ 'rofi' , '-dmenu']
 rofi_command += [ '-lines', '10', '-i' ]
 yank_key = 'Control+y'
-edit_bib_key = 'Control+z'
-edit_key = 'Control+y'
+edit_bib_key = 'Control+i'
 
 # accepts a list of strings and returns the index of the selected menu entry
 # or None otherwise
