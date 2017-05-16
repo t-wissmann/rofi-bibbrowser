@@ -104,7 +104,10 @@ def filenameAuthorsYearTitle(entry):
     return  part1 + second_sep + re.sub('[\.,!]*$', '', title)
 
 def filenameBibID(entry):
-    return entry['ID']
+    if 'ID' in entry:
+        return entry['ID']
+    else:
+        return None
 
 def filenameFromURL(entry):
     if 'link' in entry:
