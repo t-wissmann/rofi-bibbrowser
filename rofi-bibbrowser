@@ -25,6 +25,7 @@ rofi_command = [ 'rofi' , '-dmenu']
 rofi_command += [ '-lines', '10', '-i' ]
 yank_key = 'Control+y'
 edit_bib_key = 'Control+i'
+yank_file_path_key = 'Control+x'
 
 # accepts a list of strings and returns the index of the selected menu entry
 # or None otherwise
@@ -224,11 +225,13 @@ with open(bibfile) as bibtex_file:
     keybindings = [ ['Enter', 'Open' ],
                 [ yank_key, 'Copy bibtex source' ],
                 [ edit_bib_key, 'Edit bibtex file' ],
+                [ yank_file_path_key, 'Copy file path' ],
               ]
     message = format_keybinding_message(keybindings)
     rofi_args = [ '-eh', '2', '-p', 'Open:', '-no-custom']
     rofi_args += [ '-kb-custom-1', yank_key ]
     rofi_args += [ '-kb-custom-2', edit_bib_key ]
+    rofi_args += [ '-kb-custom-3', yank_file_path_key ]
     rofi_args += [ '-mesg', message ]
     idx,exit_code = call_rofi(menu,  rofi_args)
     if idx == None or exit_code == 1:
@@ -241,6 +244,13 @@ with open(bibfile) as bibtex_file:
             to_clipboard(entry['_source'])
     elif exit_code == 11:
         open_file(bibfile)
+    elif exit_code == 12:
+        if is_file[idx] == True:
+            to_clipboard(document_dir + '/' + menu[idx])
+        else:
+            entry = bib_database.entries[idx]
+            if len(entry['_filepaths']) > 0:
+                to_clipboard(document_dir + '/' + entry['_filepaths'][0])
     elif is_file[idx] == True:
         open_file(document_dir + '/' + menu[idx])
     else:
