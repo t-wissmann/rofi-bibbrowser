@@ -25,15 +25,13 @@ bibtex file and containing all PDFs of your document directory that could not
 be associated to a bibtex entry. Bibtex entries with an associated PDF file are
 indicated by the `[PDF]` marker.
 
-![Screenshot]
-(screenshots/main-window.png)
+![Screenshot](screenshots/main-window.png)
 
 If you select a bibtex entry that has at least one PDF associated to it, it
 will open that PDF. Otherwise, it will ask you for the PDF document for that
 bibtex entry.
 
-![Screenshot]
-(screenshots/linking-window.png)
+![Screenshot](screenshots/linking-window.png)
 
 Selecting the corresponding PDF document will rename it to a canonical filename
 and open it afterwards.
