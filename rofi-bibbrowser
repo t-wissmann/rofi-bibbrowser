@@ -15,7 +15,6 @@ class CustomParser(BibTexParser):
         return d
 
 
-
 # DEFAULT CONFIG SECTION
 home = os.environ['HOME']
 config_dir = os.environ.get('XDG_CONFIG_DIR', home + '/.config/')
@@ -193,6 +192,27 @@ def format_bib_entry(e):
     if len(e['_filepaths']) > 0:
         s += ' [PDF]'
     return s
+
+class BibDir:
+    """ A directory"""
+    def __init__(self,
+                 name = None,
+                 bib = '',
+                 dir = None,
+                 readonly = True,
+                 ):
+        if (dir == None):
+            dir = os.path.dirname(bib)
+        elif (not os.path.isabs(bib)):
+            # treat path to bibfile relative to base dir
+            bib = os.path.join(dir, bib)
+        self.name = name
+        self.dir = dir
+        self.bib = bib
+
+    def read_entries():
+        with open(self.bib) as bibtex_file:
+            pass
 
 configfile = config_dir + 'rofi-bibbrowserrc'
 if os.path.isfile(configfile):
