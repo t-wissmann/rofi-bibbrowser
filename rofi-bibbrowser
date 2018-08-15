@@ -219,9 +219,9 @@ if os.path.isfile(configfile):
     exec (compile(open(configfile, "rb").read(), configfile, 'exec'))
 
 with open(bibfile) as bibtex_file:
-    parser = CustomParser()
-    parser.customization = convert_to_unicode
-    bib_database = bibtexparser.load(bibtex_file, parser=parser)
+    parser = CustomParser(common_strings=False, interpolate_strings=False)
+    # parser.customization = convert_to_unicode
+    bib_database = parser.parse_file(bibtex_file,partial=True)
     documents = filter_documents(find_files(document_dir))
     menu = []
     is_file = []
