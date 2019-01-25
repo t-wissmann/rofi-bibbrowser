@@ -49,4 +49,13 @@ defined before and adjust it to your needs.
 * `xclip` (for bibtex source yanking)
 * https://github.com/aclements/biblib either globally or cloned to the subdirectory `biblib/`
 
+## Installation
+
+Install `rofi`, `xdg-open`, `xclip` to your PATH. Install https://github.com/aclements/biblib
+globally or simply clone it as a subdirectory:
+```
+git clone https://github.com/aclements/biblib
+```
+If you install it as a subdirectory, make sure that you call `rofi-bibbrowser`
+with an absolute path and not through a symlink that is in a PATH directory.
 
