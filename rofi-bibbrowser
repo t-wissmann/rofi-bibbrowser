@@ -271,7 +271,7 @@ with open(bibfile) as bibtex_file:
         if is_file[idx]:
             to_clipboard(document_dir + '/' + menu[idx])
         else:
-            entry = bib_database.entries[idx]
+            entry = list(bib_database.values())[idx]
             to_clipboard(entry['_source'])
     elif exit_code == 11:
         open_file(bibfile)
@@ -279,14 +279,14 @@ with open(bibfile) as bibtex_file:
         if is_file[idx] == True:
             to_clipboard(document_dir + '/' + menu[idx])
         else:
-            entry = bib_database.entries[idx]
+            entry = list(bib_database.values())[idx]
             if len(entry['_filepaths']) > 0:
                 to_clipboard(document_dir + '/' + entry['_filepaths'][0])
     elif is_file[idx] == True:
         open_file(document_dir + '/' + menu[idx])
     else:
         # selected item was bib entry
-        entry = bib_database.entries[idx]
+        entry = list(bib_database.values())[idx]
         if len(entry['_filepaths']) > 0:
             open_file(document_dir + '/' + entry['_filepaths'][0])
         else:
