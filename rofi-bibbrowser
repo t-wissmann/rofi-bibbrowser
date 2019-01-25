@@ -1,19 +1,14 @@
 #!/usr/bin/env python
 import subprocess
-import bibtexparser
 import struct
 import re
 import sys
 import os
-from bibtexparser.bparser import BibTexParser
-from bibtexparser.customization import convert_to_unicode
 
-class CustomParser(BibTexParser):
-    def _parse_record(self, record, customization=None):
-        d = super()._parse_record(record, customization)
-        d['_source'] = record
-        return d
-
+BIBLIB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'biblib')
+sys.path.append(BIBLIB_DIR)
+import biblib.bib
+import biblib.algo
 
 # DEFAULT CONFIG SECTION
 home = os.environ['HOME']
@@ -47,9 +42,14 @@ def call_rofi(entries, additional_args=[]):
         return int(answer),exit_code
 
 def fix_string(string):
-    string = re.sub('[\s+]', ' ', string)
-    string = re.sub('[`\\\\{}]', '', string)
-    return string
+    try:
+        return biblib.algo.tex_to_unicode(string)
+    except biblib.messages.InputError as e:
+        print("Warning: invalid tex string: »{}«:".format(string), file=sys.stderr, end='')
+        for _,msg in e.args[0]:
+            print(" {}".format(msg), end='', file=sys.stderr)
+        print("", file=sys.stderr)
+        return string
 
 def reorder_author_name(author):
     parts = author.split(', ')
@@ -193,6 +193,18 @@ def format_bib_entry(e):
         s += ' [PDF]'
     return s
 
+def load_bib(bibtex_filepath):
+    try:
+        # Load databases
+        parser = biblib.bib.Parser()
+        db = parser.parse(bibtex_filepath,
+                          log_fp=sys.stderr)
+        db = db.get_entries()
+        #db = biblib.bib.resolve_crossrefs(db)
+        return db
+    except biblib.messages.InputError:
+        sys.exit(1)
+
 class BibDir:
     """ A directory"""
     def __init__(self,
@@ -219,14 +231,13 @@ if os.path.isfile(configfile):
     exec (compile(open(configfile, "rb").read(), configfile, 'exec'))
 
 with open(bibfile) as bibtex_file:
-    parser = CustomParser(common_strings=False, interpolate_strings=False)
     # parser.customization = convert_to_unicode
-    bib_database = parser.parse_file(bibtex_file,partial=True)
     documents = filter_documents(find_files(document_dir))
     menu = []
     is_file = []
     bib_filenames = [] # filenames that are reachable via bib entries
-    for e in bib_database.entries:
+    bib_database = load_bib(bibtex_file)
+    for e in bib_database.values():
         menu.append('dummy')
         is_file.append(False)
         e['_filenames'] = list(generate_filenames(e))
@@ -239,7 +250,7 @@ with open(bibfile) as bibtex_file:
             # then add it to the menu
             menu.append(e)
             is_file.append(True)
-    for idx,e in enumerate(bib_database.entries):
+    for idx,e in enumerate(bib_database.values()):
         menu[idx] = format_bib_entry(e)
 
     keybindings = [ ['Enter', 'Open' ],

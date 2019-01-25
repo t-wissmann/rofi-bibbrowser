@@ -45,6 +45,8 @@ defined before and adjust it to your needs.
 
 * A current version of `rofi` in your PATH
 * Python 3
-* `python-bibtexparser`, i.e. the python module `bibtexparser`
 * `xdg-open` (for opening PDF documents)
 * `xclip` (for bibtex source yanking)
+* https://github.com/aclements/biblib either globally or cloned to the subdirectory `biblib/`
+
+
