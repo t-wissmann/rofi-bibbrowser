@@ -205,6 +205,35 @@ def load_bib(bibtex_filepath):
     except biblib.messages.InputError:
         sys.exit(1)
 
+class BibImport:
+    def __init__(self, name, url_re):
+        self.name = name
+        self.url_re = re.compile(url_re)
+
+    def can_handle(self, url):
+        """return whether the given url can be handled. If yes return a match object."""
+        return self.url_re.match(url)
+
+    def download(self, url_match):
+        """given a url_match, print some info about the given url.
+        The url_match has to be a match of the url_re passed to __init__().
+        """
+        pass
+
+class AcmDigitalLibraryImport(BibImport):
+    def __init__(self):
+        super(AcmDigitalLibraryImport, self).__init__(
+            "ACM Digital Library",
+            "https://dl\.acm\.org/citation\.cfm\?id=([0-9]*)")
+
+    def download(self, url_match):
+        article_id = int(url_match.group(1))
+        bib_url = 'https://dl.acm.org/exportformats.cfm?id={}&expformat=bibtex'\
+                  .format(article_id, article_id)
+        print("")
+        print("bibtex url: " + bib_url + "")
+        print("")
+
 class BibDir:
     """ A directory"""
     def __init__(self,
@@ -229,6 +258,23 @@ class BibDir:
 configfile = config_dir + 'rofi-bibbrowserrc'
 if os.path.isfile(configfile):
     exec (compile(open(configfile, "rb").read(), configfile, 'exec'))
+
+
+def try_import(url):
+    bib_importers = [
+        AcmDigitalLibraryImport(),
+    ]
+    for b in bib_importers:
+        match = b.can_handle(url)
+        if match:
+            print("Importing {} from {}".format(url, b.name))
+            b.download(match)
+            return
+    print("No bibtex importer found for {}".format(url))
+
+if len(sys.argv) > 2 and sys.argv[1] == 'import':
+    try_import(sys.argv[2])
+    sys.exit(0)
 
 with open(bibfile) as bibtex_file:
     # parser.customization = convert_to_unicode
