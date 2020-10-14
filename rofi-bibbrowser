@@ -4,6 +4,7 @@ import struct
 import re
 import sys
 import os
+import argparse
 
 BIBLIB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'biblib')
 sys.path.append(BIBLIB_DIR)
@@ -348,7 +349,26 @@ class BibDir:
                 self.documents.append(bd)
 
 
-# DEFAULT CONFIG SECTION
+def print_default_config():
+    global default_config_imports
+    with open(__file__, 'r') as fh:
+        in_snippet = False
+        print(default_config_imports)
+        begin = '# -- 8< -- SNIP: Default config -- 8< --'
+        end = '# -- 8< -- SNIP END -- 8< --'
+        for l in fh.readlines():
+            if not in_snippet and l.rstrip() == begin:
+                in_snippet = True
+            elif in_snippet and l.rstrip() == end:
+                in_snippet = False
+            elif in_snippet:
+                print(l, end='')
+
+default_config_imports = """\
+import os
+"""
+
+# -- 8< -- SNIP: Default config -- 8< --
 home = os.environ['HOME']
 config_dir = os.environ.get('XDG_CONFIG_DIR', home + '/.config/')
 document_dir = os.path.expanduser('~/uni/literatur')
@@ -361,8 +381,10 @@ yank_file_path_key = 'Control+x'
 
 bib_dirs = [
     # if empty, this defaults to:
-    # BibDir(bibfile, dir=
+    # BibDir(document_dir, bib=bibfile)
 ]
+
+# -- 8< -- SNIP END -- 8< --
 
 
 configfile = config_dir + 'rofi-bibbrowserrc'
@@ -388,6 +410,16 @@ if len(sys.argv) > 2 and sys.argv[1] == 'import':
 
 
 def main():
+    parser = argparse.ArgumentParser(description='Access your bibliography with rofi')
+    parser.add_argument('--default-config',
+                        default=False, action='store_true',
+                        help='print default config and exit')
+
+    args = parser.parse_args()
+    if args.default_config:
+        print_default_config()
+        return 0
+
     bibdir = BibDir(document_dir, bib=bibfile)
     bibdir.load()
 
@@ -450,4 +482,6 @@ def main():
         open_file(new_path)
 
 if __name__ == "__main__":
-    main()
+    res = main()
+    if res is not None:
+        sys.exit(res)
