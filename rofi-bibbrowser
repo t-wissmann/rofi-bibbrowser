@@ -390,35 +390,24 @@ if len(sys.argv) > 2 and sys.argv[1] == 'import':
 def main():
     bibdir = BibDir(document_dir, bib=bibfile)
     bibdir.load()
-    # format menu entries
-    menu = []
-    is_file = []
-    for idx, doc in enumerate(bibdir.documents):
-        if doc.bibtex is not None:
-            menu.append(format_bib_entry(doc.bibtex))
-            is_file.append(False)
-        else:
-            menu.append(doc.relpath())
-            is_file.append(True)
 
     # call rofi
-    keybindings = [ ['Enter', 'Open' ],
+    keybindings = [
                 [ yank_key, 'Copy bibtex source' ],
                 [ edit_bib_key, 'Edit bibtex file' ],
                 [ yank_file_path_key, 'Copy file path' ],
               ]
-    rofi_args = [ '-eh', '2', '-p', 'Open:', '-no-custom']
     rofi = Rofi()
     for [key, helptext] in keybindings:
-        if key == 'Enter':
-            continue
         rofi.add_keybind(key, key, helptext)
+
     for doc in bibdir.documents:
         if doc.bibtex is not None:
             label = format_bib_entry(doc.bibtex)
         else:
             label = doc.relpath()
         rofi.add_item(doc, label)
+
     bibdoc, key = rofi.call(mesg='Select a document to open it.',
                             args=[ '-eh', '2', '-p', 'Open:', '-no-custom'])
     if bibdoc is None:
