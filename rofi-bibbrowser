@@ -5,6 +5,7 @@ import re
 import sys
 import os
 import argparse
+import traceback
 
 BIBLIB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'biblib')
 sys.path.append(BIBLIB_DIR)
@@ -282,16 +283,31 @@ class BibDocument:
              return os.path.relpath(self.filepaths[0], self.bibdir.dirpath)
         return None
 
+def fail(message):
+    print(message, file=sys.stderr)
+    print("Fatal error, exiting. Here is a stacktrace:\n", file=sys.stderr)
+    traceback.print_stack(file=sys.stderr)
+    sys.exit(1)
+
 class BibDir:
     """ A directory holding bib files and PDFs"""
     def __init__(self,
                  path,  # the path to a .bib-file or a directory
-                 bib = None,  # a path to a separate .bib-file if 'path' is a directory
-                 readonly = False,
+                 bib=None,  # a path to a separate .bib-file if 'path' is a directory
+                 expanduser=True,  # run os.path.expanduser() on the path and bib
                  ):
+        if expanduser:
+            path = os.path.expanduser(path)
+            if bib is not None:
+                bib = os.path.expanduser(bib)
+
         if os.path.isfile(path) and bib is None:
             bib = path
             path = os.path.dirname(path)
+        if not os.path.exists(path):
+            fail("The path »{}« does not exist!".format(path))
+        if not os.path.exists(bib):
+            fail("The bib path »{}« does not exist!".format(path))
         if not os.path.isabs(bib):
             # treat path to bibfile relative to base dir
             bib = os.path.join(dir, bib)
@@ -385,16 +401,15 @@ yank_file_path_key = 'Control+x'
 
 bib_dirs = [
     # E.g. do something like:
-    # BibDir(os.path.expanduser('~/literature/refs.bib')),
+    # BibDir('~/literature/refs.bib'),
     # this will manage the given refs.bib file and lists
     # all PDFs in ~/literature/
-
 ]
 
 
 # old config: Do not use these!
 #
-# document_dir = os.path.expanduser('~/uni/literatur')
+# document_dir = '~/uni/literatur'
 # bibfile = document_dir + '/refs.bib'
 #
 # instead add something like
@@ -447,7 +462,6 @@ def main():
     all_documents = []
     for bibdir in bib_dirs:
         bibdir.load()
-        print("{}: Adding {} docs".format(bibdir.dirpath, len(bibdir.documents)))
         all_documents += bibdir.documents
 
     # call rofi
