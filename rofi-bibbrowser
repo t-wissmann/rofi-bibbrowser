@@ -365,19 +365,26 @@ def print_default_config():
                 print(l, end='')
 
 default_config_imports = """\
+#!/usr/bin/env python3
 import os
 """
 
+###########################################################
 # -- 8< -- SNIP: Default config -- 8< --
-home = os.environ['HOME']
-config_dir = os.environ.get('XDG_CONFIG_DIR', home + '/.config/')
-document_dir = os.path.expanduser('~/uni/literatur')
-bibfile = document_dir + '/refs.bib'
+# the rofi-bibbrowser config is a python file that is loaded
+# before the main function is called and after all the functions
+# have been defined. So here, you can overwrite arbitrary
+# variables and functions
+
 rofi_command = [ 'rofi' , '-dmenu']
 rofi_command += [ '-lines', '10', '-i' ]
+
 yank_key = 'Control+y'
 edit_bib_key = 'Control+i'
 yank_file_path_key = 'Control+x'
+
+document_dir = os.path.expanduser('~/uni/literatur')
+bibfile = document_dir + '/refs.bib'
 
 bib_dirs = [
     # if empty, this defaults to:
@@ -385,9 +392,13 @@ bib_dirs = [
 ]
 
 # -- 8< -- SNIP END -- 8< --
+###########################################################
 
 
+home = os.environ['HOME']
+config_dir = os.environ.get('XDG_CONFIG_DIR', home + '/.config/')
 configfile = config_dir + 'rofi-bibbrowserrc'
+
 if os.path.isfile(configfile):
     exec (compile(open(configfile, "rb").read(), configfile, 'exec'))
 

@@ -39,7 +39,8 @@ and open it afterwards.
 ## Configuration file
 The configuration file is just a python script and located at
 `~/.config/rofi-bibbrowserrc`. You can overwrite any function that has been
-defined before and adjust it to your needs.
+defined before and adjust it to your needs. Run `rofi-bibbrowser
+--default-config` to see the default definitions.
 
 ## Requirements
 
