@@ -10,16 +10,6 @@ sys.path.append(BIBLIB_DIR)
 import biblib.bib
 import biblib.algo
 
-# DEFAULT CONFIG SECTION
-home = os.environ['HOME']
-config_dir = os.environ.get('XDG_CONFIG_DIR', home + '/.config/')
-document_dir = home + '/uni/literatur'
-bibfile = document_dir + '/refs.bib'
-rofi_command = [ 'rofi' , '-dmenu']
-rofi_command += [ '-lines', '10', '-i' ]
-yank_key = 'Control+y'
-edit_bib_key = 'Control+i'
-yank_file_path_key = 'Control+x'
 
 # accepts a list of strings and returns the index of the selected menu entry
 # or None otherwise
@@ -234,26 +224,98 @@ class AcmDigitalLibraryImport(BibImport):
         print("bibtex url: " + bib_url + "")
         print("")
 
+class BibDocument:
+    """ A bib document is an entry in a .bib file or a PDF file
+    or a combination of those
+    """
+    def __init__(self, bibdir):
+        self.bibdir = bibdir # the owner of this of type BibDir
+        self.filepaths = []  # files in the file system
+        self.bibtex = None  # possibly a bibtex entry object
+
 class BibDir:
-    """ A directory"""
+    """ A directory holding bib files and PDFs"""
     def __init__(self,
-                 name = None,
-                 bib = '',
-                 dir = None,
-                 readonly = True,
+                 path,  # the path to a .bib-file or a directory
+                 bib = None,  # a path to a separate .bib-file if 'path' is a directory
+                 readonly = False,
                  ):
-        if (dir == None):
-            dir = os.path.dirname(bib)
-        elif (not os.path.isabs(bib)):
+        if os.path.isfile(path) and bib is None:
+            path = os.path.dirname(path)
+            bib = path
+        if not os.path.isabs(bib):
             # treat path to bibfile relative to base dir
             bib = os.path.join(dir, bib)
-        self.name = name
         self.dir = dir
         self.bib = bib
+        self.documents = []  # a array of BibDocument objects
+        self.bib_database = None  # database from biblib library
 
-    def read_entries():
+    def load(self):
+        # reset
+        self.bib_database = None
+        # map guessed filenmaes to BibDocument objects
+        guessfilename2bibdoc = {}
+
+        # read bib file
         with open(self.bib) as bibtex_file:
-            pass
+            try:
+                # Load databases
+                parser = biblib.bib.Parser()
+                db = parser.parse(bibtex_file,
+                                  log_fp=sys.stderr)
+                db = db.get_entries()
+                #db = biblib.bib.resolve_crossrefs(db)
+                self.bib_database = db
+            except biblib.messages.InputError:
+                sys.exit(1)
+
+        # create BibDocument objects
+        for e in self.bib_database.values():
+            e['_filenames'] = list(generate_filenames(e))
+            e['_filepaths'] = []
+            bd = BibDocument(self)
+            bd.bibtex = e
+            self.documents.append(bd)
+            for filename in e['_filenames']:
+                if filename not in guessfilename2bibdoc:
+                    guessfilename2bibdoc[filename] = []
+                guessfilename2bibdoc[filename].append(bd)
+
+        # read files and try to link to bibtex entries:
+        for relpath in filter_documents(find_files(document_dir)):
+            absolute_path = os.path.join(document_dir, relpath)
+            filename = document_name_from_path(relpath)
+            bibdocs = guessfilename2bibdoc.get(filename, [])
+            if len(bibdocs) >= 1:
+                if len(bibdocs) >= 2:
+                    sys.stderr.write("Warning: multiple bibtex entries for: " + relpath)
+                bibdocs[0].filepaths.append(absolute_path)
+                bibdocs[0].bibtex['_filepaths'].append(relpath)
+            else:
+                # no bibtex entry for the file 'path' yet
+                # so create new entry
+                bd = BibDocument(self)
+                bd.filepaths.append(absolute_path)
+                self.documents.append(bd)
+
+
+# DEFAULT CONFIG SECTION
+home = os.environ['HOME']
+config_dir = os.environ.get('XDG_CONFIG_DIR', home + '/.config/')
+document_dir = os.path.expanduser('~/uni/literatur')
+bibfile = document_dir + '/refs.bib'
+rofi_command = [ 'rofi' , '-dmenu']
+rofi_command += [ '-lines', '10', '-i' ]
+yank_key = 'Control+y'
+edit_bib_key = 'Control+i'
+yank_file_path_key = 'Control+x'
+
+bib_dirs = [
+    # if empty, this defaults to:
+    # BibDir(bibfile, dir=
+]
+
 
 configfile = config_dir + 'rofi-bibbrowserrc'
 if os.path.isfile(configfile):
@@ -276,29 +338,22 @@ if len(sys.argv) > 2 and sys.argv[1] == 'import':
     try_import(sys.argv[2])
     sys.exit(0)
 
-with open(bibfile) as bibtex_file:
-    # parser.customization = convert_to_unicode
-    documents = filter_documents(find_files(document_dir))
+
+def main():
+    bibdir = BibDir(document_dir, bib=bibfile)
+    bibdir.load()
+    # format menu entries
     menu = []
     is_file = []
-    bib_filenames = [] # filenames that are reachable via bib entries
-    bib_database = load_bib(bibtex_file)
-    for e in bib_database.values():
-        menu.append('dummy')
-        is_file.append(False)
-        e['_filenames'] = list(generate_filenames(e))
-        e['_filepaths'] = []
-        for i in e['_filenames']:
-            link_doc_name_to_entry(i, e)
-    for e in documents:
-        if not link_path_to_entry(e):
-            # if the file e could not be linked to an entry
-            # then add it to the menu
-            menu.append(e)
+    for idx, doc in enumerate(bibdir.documents):
+        if doc.bibtex is not None:
+            menu.append(format_bib_entry(doc.bibtex))
+            is_file.append(False)
+        else:
+            menu.append(os.path.relpath(doc.filepaths[0], document_dir))
             is_file.append(True)
-    for idx,e in enumerate(bib_database.values()):
-        menu[idx] = format_bib_entry(e)
 
+    # call rofi
     keybindings = [ ['Enter', 'Open' ],
                 [ yank_key, 'Copy bibtex source' ],
                 [ edit_bib_key, 'Edit bibtex file' ],
@@ -311,46 +366,44 @@ with open(bibfile) as bibtex_file:
     rofi_args += [ '-kb-custom-3', yank_file_path_key ]
     rofi_args += [ '-mesg', message ]
     idx,exit_code = call_rofi(menu,  rofi_args)
-    if idx == None or exit_code == 1:
+    if idx is not None and exit_code != 1:
+        bibdoc = bibdir.documents[idx]
+    else:
         sys.exit(0)
-    elif exit_code == 10:
-        if is_file[idx]:
-            to_clipboard(document_dir + '/' + menu[idx])
+    if exit_code == 10:
+        if bibdoc.bibtex is None:
+            to_clipboard(bibdoc.filepaths[0])
         else:
-            entry = list(bib_database.values())[idx]
-            to_clipboard(entry['_source'])
+            del bibdoc.bibtex['_filenames']
+            del bibdoc.bibtex['_filepaths']
+            to_clipboard(bibdoc.bibtex.to_bib(month_to_macro=False,wrap_width=None))
     elif exit_code == 11:
         open_file(bibfile)
     elif exit_code == 12:
-        if is_file[idx] == True:
-            to_clipboard(document_dir + '/' + menu[idx])
-        else:
-            entry = list(bib_database.values())[idx]
-            if len(entry['_filepaths']) > 0:
-                to_clipboard(document_dir + '/' + entry['_filepaths'][0])
-    elif is_file[idx] == True:
-        open_file(document_dir + '/' + menu[idx])
+        if len(bibdoc.filepaths) > 0:
+            to_clipboard(bibdoc.filepaths[0])
+    elif len(bibdoc.filepaths) > 0:
+        open_file(bibdoc.filepaths[0])
     else:
         # selected item was bib entry
-        entry = list(bib_database.values())[idx]
-        if len(entry['_filepaths']) > 0:
-            open_file(document_dir + '/' + entry['_filepaths'][0])
-        else:
-            message = 'Pick a document corresponding to the entry:\n\n'
-            message += '  ' + re.sub('\n', '\n  ', menu[idx]) + '\n\n'
-            message += 'The selected file will be renamed to:\n\n'
-            message += '  ' + entry['_filenames'][0]
-            message += '\n'
-            newfileidx,_ = call_rofi(documents, [ '-p', 'Link:', '-no-custom', '-mesg', message ])
-            if newfileidx == None:
-                sys.exit(0)
-            filepath = document_dir + '/' + documents[newfileidx]
-            dirname, basename = os.path.split(filepath)
-            docname,extension = os.path.splitext(basename)
-            new_path = dirname + '/' + entry['_filenames'][0] + extension
-            move_document(filepath, new_path)
-            open_file(new_path)
+        message = 'Pick a document corresponding to the entry:\n\n'
+        message += '  ' + re.sub('\n', '\n  ', format_bib_entry(bibdoc.bibtex)) + '\n\n'
+        message += 'The selected file will be renamed to:\n\n'
+        message += '  ' + bibdoc.bibtex['_filenames'][0]
+        message += '\n'
+        # list all filepaths that are not linked to a bibtex entry:
+        filepaths = [bd.filepaths[0] for bd in bibdir.documents if bd.bibtex is None]
+        newfileidx,_ = call_rofi([os.path.relpath(f, document_dir) for f in filepaths], [ '-p', 'Link:', '-no-custom', '-mesg', message ])
+        if newfileidx == None:
+            sys.exit(0)
+        filepath = filepaths[newfileidx]
+        dirname, basename = os.path.split(filepath)
+        docname, extension = os.path.splitext(basename)
+        new_path = dirname + '/' + bibdoc.bibtex['_filenames'][0] + extension
+        print("mv {}   --->   {}".format(filepath, new_path))
+        sys.exit(1)
+        move_document(filepath, new_path)
+        open_file(new_path)
 
-            # try to link a document
-    #print(bib_database.entries)
-
+if __name__ == "__main__":
+    main()
