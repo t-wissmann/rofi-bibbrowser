@@ -290,8 +290,8 @@ class BibDir:
                  readonly = False,
                  ):
         if os.path.isfile(path) and bib is None:
-            path = os.path.dirname(path)
             bib = path
+            path = os.path.dirname(path)
         if not os.path.isabs(bib):
             # treat path to bibfile relative to base dir
             bib = os.path.join(dir, bib)
@@ -332,8 +332,8 @@ class BibDir:
                 guessfilename2bibdoc[filename].append(bd)
 
         # read files and try to link to bibtex entries:
-        for relpath in filter_documents(find_files(document_dir)):
-            absolute_path = os.path.join(document_dir, relpath)
+        for relpath in filter_documents(find_files(self.dirpath)):
+            absolute_path = os.path.join(self.dirpath, relpath)
             filename = document_name_from_path(relpath)
             bibdocs = guessfilename2bibdoc.get(filename, [])
             if len(bibdocs) >= 1:
@@ -383,14 +383,23 @@ yank_key = 'Control+y'
 edit_bib_key = 'Control+i'
 yank_file_path_key = 'Control+x'
 
-document_dir = os.path.expanduser('~/uni/literatur')
-bibfile = document_dir + '/refs.bib'
-
 bib_dirs = [
-    # if empty, this defaults to:
-    # BibDir(document_dir, bib=bibfile)
+    # E.g. do something like:
+    # BibDir(os.path.expanduser('~/literature/refs.bib')),
+    # this will manage the given refs.bib file and lists
+    # all PDFs in ~/literature/
+
 ]
 
+
+# old config: Do not use these!
+#
+# document_dir = os.path.expanduser('~/uni/literatur')
+# bibfile = document_dir + '/refs.bib'
+#
+# instead add something like
+#    BibDir(document_dir, bib=bibfile),
+# to the above bib_dirs array
 # -- 8< -- SNIP END -- 8< --
 ###########################################################
 
@@ -431,8 +440,15 @@ def main():
         print_default_config()
         return 0
 
-    bibdir = BibDir(document_dir, bib=bibfile)
-    bibdir.load()
+    global bib_dirs
+    if len(bib_dirs) == 0:
+        bib_dirs = [BibDir(document_dir, bib=bibfile)]
+
+    all_documents = []
+    for bibdir in bib_dirs:
+        bibdir.load()
+        print("{}: Adding {} docs".format(bibdir.dirpath, len(bibdir.documents)))
+        all_documents += bibdir.documents
 
     # call rofi
     keybindings = [
@@ -444,7 +460,7 @@ def main():
     for [key, helptext] in keybindings:
         rofi.add_keybind(key, key, helptext)
 
-    for doc in bibdir.documents:
+    for doc in all_documents:
         if doc.bibtex is not None:
             label = format_bib_entry(doc.bibtex)
         else:
@@ -475,10 +491,11 @@ def main():
         message += '  ' + re.sub('\n', '\n  ', format_bib_entry(bibdoc.bibtex)) + '\n\n'
         message += 'The selected file will be renamed to:\n\n'
         message += '  ' + bibdoc.bibtex['_filenames'][0]
-        message += '\n'
+        message += '\n\n'
+        message += 'The file must be from the same BibDir.'
         # list all filepaths that are not linked to a bibtex entry:
         rofi = Rofi()
-        for bd in bibdir.documents:
+        for bd in bibdoc.bibdir.documents:
             if bd.bibtex is None and len(bd.filepaths) > 0:
                 rofi.add_item(bd, bd.relpath())
         bd,_ = rofi.call(mesg=message, args=[ '-p', 'Link:', '-no-custom'])
