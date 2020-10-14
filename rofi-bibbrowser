@@ -31,6 +31,49 @@ def call_rofi(entries, additional_args=[]):
     else:
         return int(answer),exit_code
 
+class Rofi:
+    def __init__(self):
+        self.keybinds = []
+        self.menuitems = []
+
+    def add_item(self, data, label):
+        self.menuitems.append((data, label))
+
+    def add_keybind(self, data, key, helptext):
+        self.keybinds.append((data, key, helptext))
+
+    def call(self, mesg = '', args=[]):
+        """call rofi, and return a tuple (itemselected, key_pressed)
+        where:
+          - itemselected is the 'data' of the menu item selected or None if
+            no item was selected (Escape pressed or error)
+          - key_pressed is the data of the keybinding or None if no keybind was
+            involved when selecting the menu item
+        """
+        rofi_args = []
+        message = (mesg + '\n').lstrip('\n')
+        for idx, (_, key, desc) in enumerate(self.keybinds):
+            rofi_args += [ '-kb-custom-{}'.format(idx + 1), key ]
+            message += ('%-10s: %s\n' % (key, desc))
+        rofi_args += ['-mesg', message.rstrip('\n')]
+        rofi_args += args
+        menu = [label for _, label in self.menuitems]
+        idx, exit_code = call_rofi(menu, additional_args=rofi_args)
+        item_selected = None
+        key_pressed = None
+        if idx is not None and idx >= 0 and idx < len(self.menuitems):
+            item_selected = self.menuitems[idx][0]  # the 'data' field
+        # only allow exit code 0 and something within 10 and 125
+        # because exit codes from 126 on have special meanings
+        if exit_code >= 10 and exit_code <= 125 and exit_code - 10 < len(self.keybinds):
+            key_pressed = self.keybinds[exit_code - 10][0]
+        else:
+            # if no keybind was pressed, then only exit code '0'
+            # indicates that an item was selected correctly
+            if exit_code != 0:
+                item_selected = None
+        return item_selected, key_pressed
+
 def fix_string(string):
     try:
         return biblib.algo.tex_to_unicode(string)
@@ -233,6 +276,11 @@ class BibDocument:
         self.filepaths = []  # files in the file system
         self.bibtex = None  # possibly a bibtex entry object
 
+    def relpath(self):
+        if len(self.filepaths) > 0:
+             return os.path.relpath(self.filepaths[0], self.bibdir.dirpath)
+        return None
+
 class BibDir:
     """ A directory holding bib files and PDFs"""
     def __init__(self,
@@ -246,7 +294,7 @@ class BibDir:
         if not os.path.isabs(bib):
             # treat path to bibfile relative to base dir
             bib = os.path.join(dir, bib)
-        self.dir = dir
+        self.dirpath = path
         self.bib = bib
         self.documents = []  # a array of BibDocument objects
         self.bib_database = None  # database from biblib library
@@ -350,7 +398,7 @@ def main():
             menu.append(format_bib_entry(doc.bibtex))
             is_file.append(False)
         else:
-            menu.append(os.path.relpath(doc.filepaths[0], document_dir))
+            menu.append(doc.relpath())
             is_file.append(True)
 
     # call rofi
@@ -359,27 +407,32 @@ def main():
                 [ edit_bib_key, 'Edit bibtex file' ],
                 [ yank_file_path_key, 'Copy file path' ],
               ]
-    message = format_keybinding_message(keybindings)
     rofi_args = [ '-eh', '2', '-p', 'Open:', '-no-custom']
-    rofi_args += [ '-kb-custom-1', yank_key ]
-    rofi_args += [ '-kb-custom-2', edit_bib_key ]
-    rofi_args += [ '-kb-custom-3', yank_file_path_key ]
-    rofi_args += [ '-mesg', message ]
-    idx,exit_code = call_rofi(menu,  rofi_args)
-    if idx is not None and exit_code != 1:
-        bibdoc = bibdir.documents[idx]
-    else:
+    rofi = Rofi()
+    for [key, helptext] in keybindings:
+        if key == 'Enter':
+            continue
+        rofi.add_keybind(key, key, helptext)
+    for doc in bibdir.documents:
+        if doc.bibtex is not None:
+            label = format_bib_entry(doc.bibtex)
+        else:
+            label = doc.relpath()
+        rofi.add_item(doc, label)
+    bibdoc, key = rofi.call(mesg='Select a document to open it.',
+                            args=[ '-eh', '2', '-p', 'Open:', '-no-custom'])
+    if bibdoc is None:
         sys.exit(0)
-    if exit_code == 10:
+    if key == yank_key:
         if bibdoc.bibtex is None:
             to_clipboard(bibdoc.filepaths[0])
         else:
             del bibdoc.bibtex['_filenames']
             del bibdoc.bibtex['_filepaths']
             to_clipboard(bibdoc.bibtex.to_bib(month_to_macro=False,wrap_width=None))
-    elif exit_code == 11:
+    elif key == edit_bib_key:
         open_file(bibfile)
-    elif exit_code == 12:
+    elif key == yank_file_path_key:
         if len(bibdoc.filepaths) > 0:
             to_clipboard(bibdoc.filepaths[0])
     elif len(bibdoc.filepaths) > 0:
