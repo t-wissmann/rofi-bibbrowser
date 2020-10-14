@@ -445,16 +445,18 @@ def main():
         message += '  ' + bibdoc.bibtex['_filenames'][0]
         message += '\n'
         # list all filepaths that are not linked to a bibtex entry:
-        filepaths = [bd.filepaths[0] for bd in bibdir.documents if bd.bibtex is None]
-        newfileidx,_ = call_rofi([os.path.relpath(f, document_dir) for f in filepaths], [ '-p', 'Link:', '-no-custom', '-mesg', message ])
-        if newfileidx == None:
+        rofi = Rofi()
+        for bd in bibdir.documents:
+            if bd.bibtex is None and len(bd.filepaths) > 0:
+                rofi.add_item(bd, bd.relpath())
+        bd,_ = rofi.call(mesg=message, args=[ '-p', 'Link:', '-no-custom'])
+        if bd is None:
             sys.exit(0)
-        filepath = filepaths[newfileidx]
+        filepath = bd.filepaths[0]
         dirname, basename = os.path.split(filepath)
         docname, extension = os.path.splitext(basename)
         new_path = dirname + '/' + bibdoc.bibtex['_filenames'][0] + extension
-        print("mv {}   --->   {}".format(filepath, new_path))
-        sys.exit(1)
+        print("mv \'{}\'  -->  \'{}\'".format(filepath, new_path))
         move_document(filepath, new_path)
         open_file(new_path)
 
