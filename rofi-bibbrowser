@@ -224,7 +224,7 @@ def format_keybinding_message(bindings):
 # gets a bib entry (as a dictionary) and returns how it should appear in the menu
 def format_bib_entry(e):
     s = fix_string(e.get('title', e.get('ID', '?'))) + '\n'
-    s += format_author(e.get('author', '?')) + ' ' + e.get('year', '')
+    s += format_author(e.get('author', e.get('editor', '?'))) + ' ' + e.get('year', '')
     if len(e['_filepaths']) > 0:
         s += ' [PDF]'
     return s
