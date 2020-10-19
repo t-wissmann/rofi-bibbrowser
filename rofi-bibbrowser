@@ -221,14 +221,6 @@ def format_keybinding_message(bindings):
         out += ('%-10s: %s' % (key,desc))
     return out
 
-# gets a bib entry (as a dictionary) and returns how it should appear in the menu
-def format_bib_entry(e):
-    s = fix_string(e.get('title', e.get('ID', '?'))) + '\n'
-    s += format_author(e.get('author', e.get('editor', '?'))) + ' ' + e.get('year', '')
-    if len(e['_filepaths']) > 0:
-        s += ' [PDF]'
-    return s
-
 def load_bib(bibtex_filepath):
     try:
         # Load databases
@@ -283,6 +275,19 @@ class BibDocument:
         if len(self.filepaths) > 0:
              return os.path.relpath(self.filepaths[0], self.bibdir.dirpath)
         return None
+
+
+def format_bib_entry(e: BibDocument):
+    """Format the a BibDocument item"""
+    if e.bibtex is not None:
+        b = e.bibtex
+        s = fix_string(b.get('title', b.get('ID', '?'))) + '\n'
+        s += format_author(b.get('author', b.get('editor', '?'))) + ' ' + b.get('year', '')
+        if len(e.filepaths) > 0:
+            s += ' [PDF]'
+        return s
+    else:
+        return e.relpath()
 
 def fail(message):
     print(message, file=sys.stderr)
@@ -476,10 +481,7 @@ def main():
         rofi.add_keybind(key, key, helptext)
 
     for doc in all_documents:
-        if doc.bibtex is not None:
-            label = format_bib_entry(doc.bibtex)
-        else:
-            label = doc.relpath()
+        label = format_bib_entry(doc)
         rofi.add_item(doc, label)
 
     bibdoc, key = rofi.call(mesg='Select a document to open it.',
@@ -503,7 +505,7 @@ def main():
     else:
         # selected item was bib entry
         message = 'Pick a document corresponding to the entry:\n\n'
-        message += '  ' + re.sub('\n', '\n  ', format_bib_entry(bibdoc.bibtex)) + '\n\n'
+        message += '  ' + re.sub('\n', '\n  ', format_bib_entry(bibdoc)) + '\n\n'
         message += 'The selected file will be renamed to:\n\n'
         message += '  ' + bibdoc.bibtex['_filenames'][0]
         message += '\n\n'
