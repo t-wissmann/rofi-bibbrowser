@@ -43,6 +43,8 @@ defined before and adjust it to your needs. Run `rofi-bibbrowser
 --default-config` to see the default definitions. You can find my personal
 config [in my dotfiles](https://github.com/t-wissmann/dotfiles/blob/master/config/rofi-bibbrowserrc).
 
+See the [ChangeLog](ChangeLog.md) for recent configuration file changes.
+
 ## Requirements
 
 * A current version of `rofi` in your PATH
