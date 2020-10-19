@@ -6,8 +6,9 @@ import sys
 import os
 import argparse
 import traceback
+from pathlib import Path
 
-BIBLIB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'biblib')
+BIBLIB_DIR = os.path.join(os.path.dirname(Path(__file__).resolve()), 'biblib')
 sys.path.append(BIBLIB_DIR)
 import biblib.bib
 import biblib.algo
