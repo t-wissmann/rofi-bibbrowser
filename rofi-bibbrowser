@@ -494,7 +494,7 @@ def main():
             del bibdoc.bibtex['_filepaths']
             to_clipboard(bibdoc.bibtex.to_bib(month_to_macro=False,wrap_width=None))
     elif key == edit_bib_key:
-        open_file(bibfile)
+        open_file(bibdoc.bibdir.bib)
     elif key == yank_file_path_key:
         if len(bibdoc.filepaths) > 0:
             to_clipboard(bibdoc.filepaths[0])
