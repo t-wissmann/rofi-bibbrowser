@@ -99,7 +99,11 @@ def format_author(author):
     return ', '.join(authors)
 
 def find_files(directory):
-    cmd = [ 'find' , directory, '-type', 'f', '-printf', '%Ts %P\\0' ]
+    """
+    Here we only follow symlinks that are explicitly given on the command line,
+    but not follow nested symlinks
+    """
+    cmd = [ 'find' , '-H', directory, '-type', 'f', '-printf', '%Ts %P\\0' ]
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
     byte_string = proc.stdout.read().split(b'\0')
     byte_string = filter(None, byte_string) # remove empty (byte)strings from list
