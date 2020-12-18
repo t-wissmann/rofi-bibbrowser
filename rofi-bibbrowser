@@ -221,17 +221,6 @@ def format_keybinding_message(bindings):
         out += ('%-10s: %s' % (key,desc))
     return out
 
-def load_bib(bibtex_filepath):
-    try:
-        # Load databases
-        parser = biblib.bib.Parser()
-        db = parser.parse(bibtex_filepath,
-                          log_fp=sys.stderr)
-        db = db.get_entries()
-        #db = biblib.bib.resolve_crossrefs(db)
-        return db
-    except biblib.messages.InputError:
-        sys.exit(1)
 
 class BibImport:
     def __init__(self, name, url_re):
@@ -248,6 +237,7 @@ class BibImport:
         """
         pass
 
+
 class AcmDigitalLibraryImport(BibImport):
     def __init__(self):
         super(AcmDigitalLibraryImport, self).__init__(
@@ -261,6 +251,7 @@ class AcmDigitalLibraryImport(BibImport):
         print("")
         print("bibtex url: " + bib_url + "")
         print("")
+
 
 class BibDocument:
     """ A bib document is an entry in a .bib file or a PDF file
