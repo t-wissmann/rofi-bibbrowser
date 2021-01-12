@@ -257,6 +257,29 @@ class AcmDigitalLibraryImport(BibImport):
         print("")
 
 
+class ScienceDirectImport(BibImport):
+    def __init__(self):
+        super(ScienceDirectImport, self).__init__(
+            "ScienceDirect",
+            "https://www.sciencedirect.com/science/article/pii/(S[0-9]*)")
+
+    def download(self, url_match):
+        article_id = url_match.group(1)
+        domain = 'https://www.sciencedirect.com'
+        baseurl = domain + "/sdfe/arp/cite"
+        args = {
+            'pii': article_id,
+            'format': 'text/x-bibtex',
+            'withabstract': 'false',
+        }
+        pdf_url = domain + f'/science/article/pii/{article_id}/pdfft?pid=1-s2.0-{article_id}-main.pdf'
+        bib_url = baseurl + '?' + '&'.join([f'{k}={v}' for k, v in args.items()])
+        print("")
+        print("bibtex url: " + bib_url + "")
+        print("pdf url: " + pdf_url + "")
+        print("")
+
+
 class BibDocument:
     """ A bib document is an entry in a .bib file or a PDF file
     or a combination of those
@@ -431,6 +454,7 @@ if os.path.isfile(configfile):
 def try_import(url):
     bib_importers = [
         AcmDigitalLibraryImport(),
+        ScienceDirectImport(),
     ]
     for b in bib_importers:
         match = b.can_handle(url)
@@ -450,10 +474,18 @@ def main():
     parser.add_argument('--default-config',
                         default=False, action='store_true',
                         help='print default config and exit')
+    parser.add_argument('--import',
+                        metavar='URL',
+                        dest='importurl',
+                        help='import a bibtex and pdf from online publisher')
 
     args = parser.parse_args()
     if args.default_config:
         print_default_config()
+        return 0
+
+    if args.importurl is not None:
+        try_import(args.importurl)
         return 0
 
     global bib_dirs
