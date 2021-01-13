@@ -101,13 +101,15 @@ def format_author(author):
 def find_files(directory):
     """
     Here we only follow symlinks that are explicitly given on the command line,
-    but not follow nested symlinks
+    but not follow nested symlinks.
+
+    The returned files are sorted by last modification date
     """
     cmd = [ 'find' , '-H', directory, '-type', 'f', '-printf', '%Ts %P\\0' ]
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
     byte_string = proc.stdout.read().split(b'\0')
     byte_string = filter(None, byte_string) # remove empty (byte)strings from list
-    files = list(map(lambda x: x.decode('utf-8').split(' ', 1), byte_string))
+    files = list(map(lambda x: x.decode('utf-8', errors='replace').split(' ', 1), byte_string))
     for f in files:
         f[0] = -1 * int(f[0])
     files.sort()
@@ -464,10 +466,83 @@ def try_import(url):
             return
     print("No bibtex importer found for {}".format(url))
 
+def import_from_dir(source_dir):
+    bib_re = re.compile(r'.*\.bib$')
+    bib_files = [fp for fp in find_files(source_dir) if bib_re.match(fp)]
+    rofi = Rofi()
+    file2bibobj = {}
+    target_bib_dir = get_bib_dirs()[0]
+    db = None
+    for relpath in bib_files:
+        full_path = os.path.join(source_dir, relpath)
+        parser = biblib.bib.Parser()
+        try:
+            with open(full_path) as bibtex_file:
+                db = parser.parse(bibtex_file,
+                                  log_fp=sys.stderr)
+        except biblib.messages.InputError:
+            print(f'Unable to parse {relpath}: {e}', file=sys.stderr)
+            continue  # the error has already been printed to the log_fp
+
+        for e in db.get_entries().values():
+            bd = BibDocument(None)
+            bd.bibtex = e
+            bd.filepath = full_path
+            label = format_bib_entry(bd)
+            rofi.add_item(bd, relpath + '\n' + label)
+
+    message = 'Select bib file for adding to\n'
+    message += '\n' + target_bib_dir.bib
+    bibdoc, _ = rofi.call(mesg=message,
+                           args=['-no-custom', '-eh', '3'])
+
+    if bibdoc is None:
+        print(f'Cancelled by the user')
+        return 1
+
+    pdf_files = filter_documents(find_files(source_dir))
+    rofi = Rofi()
+    for relpath in pdf_files:
+        rofi.add_item(os.path.join(source_dir, relpath), relpath)
+
+    new_filename = list(generate_filenames(bibdoc.bibtex))[0]
+    extension = '.pdf'
+    full_target_path = os.path.join(target_bib_dir.dirpath, new_filename + extension)
+
+    message = 'Pick a document corresponding to the entry:\n\n'
+    message += '  ' + re.sub('\n', '\n  ', format_bib_entry(bibdoc)) + '\n\n'
+    message += 'The selected file will be copied to:\n\n'
+    message += '  ' + full_target_path
+    message += '\n\n'
+
+    pdfpath, _ = rofi.call(mesg=message,
+                           args=['-no-custom', '-eh', '1'])
+    if pdfpath is None:
+        print(f'Cancelled by the user')
+        return 1
+
+    print('TODO:\n')
+    print(f'    cat \"{bibdoc.filepath}\" >> \"{target_bib_dir.bib}\"')
+    print(f'    cp \"{pdfpath}\" \"{full_target_path}\"')
+    print('')
+
+
 if len(sys.argv) > 2 and sys.argv[1] == 'import':
     try_import(sys.argv[2])
     sys.exit(0)
 
+
+def get_bib_dirs():
+    """get the list of bib directories, and assert
+    that the list is non-empty.
+    But do not load the bib directories yet."""
+    global bib_dirs
+    if len(bib_dirs) == 0:
+        bib_dirs = [BibDir(document_dir, bib=bibfile)]
+    if len(bib_dirs) == 0:
+        print(f'No bib directories defined, cancelling!', file=sys.stderr)
+        sys.exit(1)
+    return bib_dirs
 
 def main():
     parser = argparse.ArgumentParser(description='Access your bibliography with rofi')
@@ -479,6 +554,10 @@ def main():
                         dest='importurl',
                         help='import a bibtex and pdf from online publisher')
 
+    parser.add_argument('--import-dir',
+                        metavar='DIR',
+                        help='import an entry from pdf and bib files in a directory')
+
     args = parser.parse_args()
     if args.default_config:
         print_default_config()
@@ -488,9 +567,11 @@ def main():
         try_import(args.importurl)
         return 0
 
-    global bib_dirs
-    if len(bib_dirs) == 0:
-        bib_dirs = [BibDir(document_dir, bib=bibfile)]
+    if args.import_dir is not None:
+        import_from_dir(args.import_dir)
+        return 0
+
+    bib_dirs = get_bib_dirs()
 
     all_documents = []
     for bibdir in bib_dirs:
