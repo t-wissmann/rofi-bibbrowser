@@ -527,11 +527,6 @@ def import_from_dir(source_dir):
     print('')
 
 
-if len(sys.argv) > 2 and sys.argv[1] == 'import':
-    try_import(sys.argv[2])
-    sys.exit(0)
-
-
 def get_bib_dirs():
     """get the list of bib directories, and assert
     that the list is non-empty.
@@ -543,6 +538,7 @@ def get_bib_dirs():
         print(f'No bib directories defined, cancelling!', file=sys.stderr)
         sys.exit(1)
     return bib_dirs
+
 
 def main():
     parser = argparse.ArgumentParser(description='Access your bibliography with rofi')
