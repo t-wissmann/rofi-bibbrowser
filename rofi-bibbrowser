@@ -6,6 +6,7 @@ import sys
 import os
 import argparse
 import traceback
+import shutil
 from pathlib import Path
 
 BIBLIB_DIR = os.path.join(os.path.dirname(Path(__file__).resolve()), 'biblib')
@@ -487,7 +488,6 @@ def import_from_dir(source_dir):
         for e in db.get_entries().values():
             bd = BibDocument(None)
             bd.bibtex = e
-            bd.filepath = full_path
             label = format_bib_entry(bd)
             rofi.add_item(bd, relpath + '\n' + label)
 
@@ -497,7 +497,7 @@ def import_from_dir(source_dir):
                            args=['-no-custom', '-eh', '3'])
 
     if bibdoc is None:
-        print(f'Cancelled by the user')
+        print(f'Cancelled by the user', file=sys.stderr)
         return 1
 
     pdf_files = filter_documents(find_files(source_dir))
@@ -518,13 +518,19 @@ def import_from_dir(source_dir):
     pdfpath, _ = rofi.call(mesg=message,
                            args=['-no-custom', '-eh', '1'])
     if pdfpath is None:
-        print(f'Cancelled by the user')
+        print(f'Cancelled by the user', file=sys.stderr)
         return 1
 
-    print('TODO:\n')
-    print(f'    cat \"{bibdoc.filepath}\" >> \"{target_bib_dir.bib}\"')
-    print(f'    cp \"{pdfpath}\" \"{full_target_path}\"')
-    print('')
+    with open(target_bib_dir.bib, 'a') as fh:
+        print(f'Appending entry to \'{target_bib_dir.bib}\'', file=sys.stderr)
+        print('', file=fh)
+        print(bibdoc.bibtex.to_bib(month_to_macro=False,wrap_width=None), file=fh)
+        print('', file=fh)
+    if os.path.exists(full_target_path):
+        print(f'File \'{full_target_path}\' already exists, skipping!', file=sys.stderr)
+    else:
+        shutil.copyfile(pdfpath, full_target_path)
+        print(f'cp \'{pdfpath}\' \'{full_target_path}\'', file=sys.stderr)
 
 
 def get_bib_dirs():
