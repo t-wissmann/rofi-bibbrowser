@@ -218,6 +218,14 @@ def to_clipboard(string):
         p.stdin.write(string.encode('utf-8'))
         p.stdin.close()
 
+
+def read_clipboard(selection='clipboard'):
+    p = subprocess.Popen(['xclip', '-selection', selection, '-o'],
+                         stdout=subprocess.PIPE,
+                         universal_newlines=True)
+    return p.stdout.read()
+
+
 # gets a list of tuples (key, description)
 # and returns a pango-formatted description of the keybindings
 def format_keybinding_message(bindings):
@@ -470,26 +478,31 @@ def try_import(url):
 def import_from_dir(source_dir):
     bib_re = re.compile(r'.*\.bib$')
     bib_files = [fp for fp in find_files(source_dir) if bib_re.match(fp)]
-    rofi = Rofi()
-    file2bibobj = {}
-    target_bib_dir = get_bib_dirs()[0]
-    db = None
-    for relpath in bib_files:
-        full_path = os.path.join(source_dir, relpath)
+
+    def try_parse_or_debug_msg(rofi, source, source_name):
         parser = biblib.bib.Parser()
         try:
-            with open(full_path) as bibtex_file:
-                db = parser.parse(bibtex_file,
-                                  log_fp=sys.stderr)
+            db = parser.parse(source,
+                              log_fp=sys.stderr)
         except biblib.messages.InputError:
-            print(f'Unable to parse {relpath}: {e}', file=sys.stderr)
-            continue  # the error has already been printed to the log_fp
+            print(f'Unable to parse {source_name}: {e}', file=sys.stderr)
+            return  # the error has already been printed to the log_fp
 
         for e in db.get_entries().values():
             bd = BibDocument(None)
             bd.bibtex = e
             label = format_bib_entry(bd)
-            rofi.add_item(bd, relpath + '\n' + label)
+            rofi.add_item(bd, source_name + '\n' + label)
+
+    rofi = Rofi()
+    target_bib_dir = get_bib_dirs()[0]
+
+    try_parse_or_debug_msg(rofi, read_clipboard(), '<clipboard>')
+
+    for relpath in bib_files:
+        full_path = os.path.join(source_dir, relpath)
+        with open(full_path) as bibtex_file:
+            try_parse_or_debug_msg(rofi, bibtex_file, relpath)
 
     message = 'Select bib file for adding to\n'
     message += '\n' + target_bib_dir.bib
