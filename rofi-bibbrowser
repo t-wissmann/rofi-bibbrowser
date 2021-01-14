@@ -564,10 +564,11 @@ def main():
     parser.add_argument('--default-config',
                         default=False, action='store_true',
                         help='print default config and exit')
-    parser.add_argument('--import',
-                        metavar='URL',
-                        dest='importurl',
-                        help='import a bibtex and pdf from online publisher')
+    # --import-dir is superior and more flexible
+    # parser.add_argument('--import',
+    #                     metavar='URL',
+    #                     dest='importurl',
+    #                     help='import a bibtex and pdf from online publisher')
 
     parser.add_argument('--import-dir',
                         metavar='DIR',
@@ -578,9 +579,10 @@ def main():
         print_default_config()
         return 0
 
-    if args.importurl is not None:
-        try_import(args.importurl)
-        return 0
+    # disabled because not mature and because import_dir is superior
+    # if args.importurl is not None:
+    #     try_import(args.importurl)
+    #     return 0
 
     if args.import_dir is not None:
         import_from_dir(args.import_dir)
