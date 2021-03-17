@@ -484,7 +484,7 @@ def import_from_dir(source_dir):
         try:
             db = parser.parse(source,
                               log_fp=sys.stderr)
-        except biblib.messages.InputError:
+        except biblib.messages.InputError as e:
             print(f'Unable to parse {source_name}: {e}', file=sys.stderr)
             return  # the error has already been printed to the log_fp
 
