@@ -610,7 +610,7 @@ def main():
         rofi.add_item(doc, label)
 
     bibdoc, key = rofi.call(mesg='Select a document to open it.',
-                            args=[ '-eh', '2', '-p', 'Open:', '-no-custom'])
+                            args=[ '-eh', '2', '-p', 'Open', '-no-custom'])
     if bibdoc is None:
         sys.exit(0)
     if key == yank_key:
@@ -640,7 +640,7 @@ def main():
         for bd in bibdoc.bibdir.documents:
             if bd.bibtex is None and len(bd.filepaths) > 0:
                 rofi.add_item(bd, bd.relpath())
-        bd,_ = rofi.call(mesg=message, args=[ '-p', 'Link:', '-no-custom'])
+        bd,_ = rofi.call(mesg=message, args=[ '-p', 'Link', '-no-custom'])
         if bd is None:
             sys.exit(0)
         filepath = bd.filepaths[0]
