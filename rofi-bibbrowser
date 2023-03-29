@@ -162,8 +162,24 @@ def filenameFromURL(entry):
         return url
     return None
 
+
+def filenameFromArxivURL(entry):
+    # we do only start with :// because we are using 're.search' anyway!
+    arxiv_url_re = re.compile(
+        r'://arxiv.org/[a-z]*/([0-9\.]*)(v[0-9]*)?',
+        flags=re.IGNORECASE)
+    for fieldkey, fieldvalue in entry.items():
+        match = arxiv_url_re.search(fieldvalue)
+        if match:
+            filename = match.group(1)
+            # print(f"returning: {filename}")
+            return filename
+    return None
+
+
 filename_generators = [
         filenameAuthorsYearTitle,
+        filenameFromArxivURL,
         filenameBibID,
         filenameFromURL,
     ]
